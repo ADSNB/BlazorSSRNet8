@@ -1,0 +1,111 @@
+﻿@page "/edit-game"
+@page "/edit-game/{Id:int}"
+@inject DataContext Context;
+@inject NavigationManager NavigationManager;
+
+@if(Id is null)
+{
+    <PageTitle>Add a New Video Game</PageTitle>
+    <h3>Add a New Video Game</h3>
+}
+else
+{
+    <PageTitle>Edit "@CurrentGame.Title"</PageTitle>
+    <h3>Edit "@CurrentGame.Title"</h3>
+}
+
+<EditForm Enhance Model="CurrentGame" OnSubmit="HandleSubmit" FormName="VideoGameForm">
+    <div>
+        <label for="title">Title</label>
+        <InputText id="title" @bind-Value="CurrentGame.Title" class="form-control" />
+    </div>
+    <div>
+        <label for="publisher">Publisher</label>
+        <InputText id="publisher" @bind-Value="CurrentGame.Publisher" class="form-control" />
+    </div>
+    <div>
+        <label for="releaseYear">ReleaseYear</label>
+        <InputNumber id="releaseYear" @bind-Value="CurrentGame.ReleaseYear" class="form-control" />
+    </div>
+    <button type="submit" class="btn btn-primary">Save</button>
+</EditForm>
+
+<p>@Status</p>
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    [SupplyParameterFromForm(FormName = "VideoGameForm")]
+    public VideoGameModel CurrentGame { get; set; } = new();
+
+    private string Status = string.Empty;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Id is not null)
+        {
+            var game = await Context.VideoGame.FindAsync(Id);
+            if (game is not null)
+            {
+                CurrentGame.Title ??= game.Title;
+                CurrentGame.Publisher ??= game.Publisher;
+                CurrentGame.ReleaseYear ??= game.ReleaseYear;
+            }
+        }
+    }
+
+    async Task HandleSubmit()
+    {
+        if (Id is not null)
+        {
+            await UpdateVideoGame();
+        }
+        else
+        {
+            await CreateVideoGame();
+        }
+    }
+
+    async Task UpdateVideoGame()
+    {
+        var dbGame = await Context.VideoGame.FindAsync(Id);
+
+        if(dbGame is not null)
+        {
+            // setting properties here will automatically update the entity
+            dbGame.Title = CurrentGame.Title;
+            dbGame.Publisher = CurrentGame.Publisher;
+            dbGame.ReleaseYear = CurrentGame.ReleaseYear;
+
+            var result = await Context.SaveChangesAsync();
+
+            if (result == 1)
+            {
+                Status = "Game updated successfully";
+                NavigationManager.NavigateTo("/Games");
+            }
+            else
+            {
+                Status = "Something went wrong...";
+            }
+        }
+    }
+
+    async Task CreateVideoGame()
+    {
+        Context.VideoGame.Add(CurrentGame);
+        var result = await Context.SaveChangesAsync();
+
+        if (result == 1)
+        {
+            Status = "Game added successfully";
+            //await Task.Delay(1000); // simulate network traffic
+            NavigationManager.NavigateTo("/Games");
+        }
+        else
+        {
+            Status = "Something went wrong...";
+        }
+    }
+}
